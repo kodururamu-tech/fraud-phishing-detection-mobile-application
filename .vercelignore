@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# ML Models (will be included but listed for reference)
+# ml-model/*.pkl
+
+# Mobile App
+mobile-app/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Setup scripts
+setup_*.bat
+setup_*.sh
+setup_*.ps1
+
+# Test files
+test_*.py
+*.example
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+
