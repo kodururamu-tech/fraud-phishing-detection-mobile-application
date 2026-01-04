@@ -34,38 +34,46 @@ class FraudDetector:
         self._load_model()
     
     def _load_model(self):
-        """Load trained ML model and vectorizer"""
+        """Load trained ML model and vectorizer with robust path handling and logging for Render/local."""
         try:
-            # Try multiple paths for flexibility (Render deployment)
             base_dir = os.path.dirname(__file__)
+            cwd = os.getcwd()
             possible_paths = [
                 os.path.join(base_dir, '..', '..', 'ml-model'),  # From backend/ml/ -> root/ml-model
                 os.path.join(base_dir, '..', 'ml-model'),        # From backend/ -> ml-model
-                os.path.join(os.getcwd(), 'ml-model'),           # Current working directory
-                'ml-model',                                       # Relative to cwd
+                os.path.join(cwd, 'ml-model'),                   # Current working directory
+                os.path.join(base_dir, 'ml-model'),              # backend/ml/ml-model
+                os.path.join(base_dir, '..', 'ml-model'),        # backend/ml/../ml-model
+                os.path.join(cwd, 'backend', 'ml-model'),        # cwd/backend/ml-model
+                'ml-model',                                      # Relative to cwd
+                os.path.join('backend', 'ml-model'),             # backend/ml-model
             ]
-            
+
             model_path = None
             vectorizer_path = None
-            
+            found = False
+            print("[Model Loader] Attempting to load model and vectorizer. Current working directory:", cwd)
             for path in possible_paths:
-                mp = os.path.join(path, 'model.pkl')
-                vp = os.path.join(path, 'vectorizer.pkl')
+                mp = os.path.abspath(os.path.join(path, 'model.pkl'))
+                vp = os.path.abspath(os.path.join(path, 'vectorizer.pkl'))
+                print(f"[Model Loader] Checking: {mp} and {vp}")
                 if os.path.exists(mp) and os.path.exists(vp):
                     model_path = mp
                     vectorizer_path = vp
+                    found = True
+                    print(f"[Model Loader] Found model at: {model_path}")
+                    print(f"[Model Loader] Found vectorizer at: {vectorizer_path}")
                     break
-            
-            if model_path and vectorizer_path:
+            if found and model_path and vectorizer_path:
                 self.model = joblib.load(model_path)
                 self.vectorizer = joblib.load(vectorizer_path)
                 self.model_loaded = True
-                print(f"ML model loaded successfully from {os.path.dirname(model_path)}")
+                print(f"[Model Loader] ML model loaded successfully from {os.path.dirname(model_path)}")
             else:
-                print("Warning: Model files not found. Using rule-based detection only.")
+                print("[Model Loader] ERROR: Model files not found in any known location. Using rule-based detection only.")
                 self.model_loaded = False
         except Exception as e:
-            print(f"Error loading model: {e}")
+            print(f"[Model Loader] Exception while loading model: {e}")
             self.model_loaded = False
     
     def is_loaded(self) -> bool:
