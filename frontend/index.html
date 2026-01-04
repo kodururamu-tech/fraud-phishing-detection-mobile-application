@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEURA - Fraud Detection</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -431,10 +439,22 @@
     </div>
 
     <script>
-        // Auto-detect API base URL (works for both local and Vercel)
+        // Initialize Firebase
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            console.log('Firebase initialized successfully');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            db = null;
+        }
+
+        // API base URL - uses Render backend
         const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
             ? 'http://localhost:8000' 
-            : '/api';
+            : RENDER_API_URL;
+        
         let scanHistory = [];
 
         // Check API connection on load
@@ -583,15 +603,94 @@
             }
         }
 
-        function addToHistory(type, result) {
+        async function addToHistory(type, result) {
             const historyItem = {
                 type: type.toUpperCase(),
                 result: result,
-                timestamp: new Date().toLocaleString()
+                timestamp: new Date().toISOString(),
+                displayTime: new Date().toLocaleString()
             };
+            
+            // Add to local array
             scanHistory.unshift(historyItem);
             if (scanHistory.length > 10) scanHistory.pop();
             renderHistory();
+            
+            // Save to Firestore
+            if (db) {
+                try {
+                    const scanData = {
+                        input_type: type,
+                        input_data: getInputData(type),
+                        prediction_result: result.is_fraud,
+                        confidence_score: result.confidence,
+                        risk_level: result.risk_level,
+                        message: result.message,
+                        details: result.details || {},
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        created_at: new Date().toISOString()
+                    };
+                    
+                    await db.collection('scan_results').add(scanData);
+                    console.log('Scan result saved to Firestore');
+                } catch (error) {
+                    console.error('Error saving to Firestore:', error);
+                }
+            }
+        }
+        
+        function getInputData(type) {
+            if (type === 'sms') {
+                return document.getElementById('smsText').value || '';
+            } else if (type === 'call') {
+                return document.getElementById('callPhone').value || '';
+            } else if (type === 'email') {
+                return {
+                    subject: document.getElementById('emailSubject').value || '',
+                    body: document.getElementById('emailBody').value || ''
+                };
+            } else if (type === 'url') {
+                return document.getElementById('urlInput').value || '';
+            }
+            return '';
+        }
+        
+        // Load history from Firestore on page load
+        async function loadHistoryFromFirestore() {
+            if (!db) return;
+            
+            try {
+                const snapshot = await db.collection('scan_results')
+                    .orderBy('timestamp', 'desc')
+                    .limit(10)
+                    .get();
+                
+                if (!snapshot.empty) {
+                    const firestoreHistory = [];
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        firestoreHistory.push({
+                            type: data.input_type.toUpperCase(),
+                            result: {
+                                is_fraud: data.prediction_result,
+                                confidence: data.confidence_score,
+                                risk_level: data.risk_level,
+                                message: data.message,
+                                details: data.details
+                            },
+                            timestamp: data.created_at ? new Date(data.created_at).toLocaleString() : 'Unknown'
+                        });
+                    });
+                    
+                    // Merge with local history (avoid duplicates)
+                    scanHistory = [...firestoreHistory, ...scanHistory.filter(item => 
+                        !firestoreHistory.some(fh => fh.timestamp === item.timestamp)
+                    )].slice(0, 10);
+                    renderHistory();
+                }
+            } catch (error) {
+                console.error('Error loading history from Firestore:', error);
+            }
         }
 
         function renderHistory() {
@@ -611,7 +710,7 @@
                             <span class="history-item-risk risk-${riskClass}">${item.result.risk_level}</span>
                         </div>
                         <p style="margin: 8px 0;">${item.result.message}</p>
-                        <p style="font-size: 0.85em; color: #999;">Confidence: ${(item.result.confidence * 100).toFixed(1)}% | ${item.timestamp}</p>
+                        <p style="font-size: 0.85em; color: #999;">Confidence: ${(item.result.confidence * 100).toFixed(1)}% | ${item.displayTime || item.timestamp}</p>
                     </div>
                 `;
             }).join('');
@@ -627,6 +726,7 @@
 
         // Initialize
         checkConnection();
+        loadHistoryFromFirestore(); // Load history from Firestore
         setInterval(checkConnection, 30000); // Check every 30 seconds
     </script>
 </body>

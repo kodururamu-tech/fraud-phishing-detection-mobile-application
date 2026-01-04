@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write access to scan results collection
+    // For demo purposes - in production, add authentication
+    match /scan_results/{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Allow read/write access to scan history collection
+    match /scan_history/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+

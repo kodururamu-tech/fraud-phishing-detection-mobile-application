@@ -1,54 +1,29 @@
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Environment
+.env
+.env.local
+
+# Node
+node_modules/
+npm-debug.log
+
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-env/
+*.pyc
+.venv/
 venv/
-ENV/
-*.egg-info/
-dist/
-build/
-
-# ML Models (keep structure, ignore large files)
-*.pkl
-*.h5
-*.hdf5
-*.joblib
-
-# Android
-*.iml
-.gradle
-/local.properties
-/.idea/
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-
-# Firebase
-google-services.json
-google-services.json.bak
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
-*.swo
-*~
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
-
-# Environment variables
-.env
-.env.local
-
-
